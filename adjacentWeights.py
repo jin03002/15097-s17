@@ -9,12 +9,12 @@
         return
     def getWeight(self, view, x, y):
         return
-        
+
     def adjacentWeights(self, view):
       maxDist = (int)(len(view)/2)
       length = len(view)
       weights = [[0 for x in range(length)] for y in range(length)]
-      for x in range(maxDist):
+      for x in range(maxDist+1):
         # - Up
         for y in range(length):
           weights[x][y] = self.getWeightAvg(view, x, y, length, maxDist)
@@ -33,7 +33,7 @@
         # | Right
         for nx in range(length):
           weights[nx][ny] = self.getWeightAvg(view, nx, ny, length, maxDist)
-      return weights
+      return [x[maxDist-1:maxDist+2] for x in weights[maxDist-1:maxDist+2]]
 
     def getMarkerValue(self, view, x, y):
       if(len(view[x][y][2]) == 0): 
