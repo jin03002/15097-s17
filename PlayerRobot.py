@@ -1,5 +1,5 @@
 from robot import Robot
-from constants import Actions, TileType
+from constants import Actions, TileType, MarkerType
 import random
 import time
 
@@ -46,57 +46,24 @@ class player_robot(Robot):
     def UpdateTargetPath(self):
         return # See below
 
+    def adjacentWeights(self, view):
+        return
+    def getMove(self, view):
+        return
+    def getWeightAvg(self, view):
+        return
+    def dist(self, x, y, length):
+        return
+    def getWeight(self, view, x, y):
+        return
+
+
     ###########################################################################################
     # This function is called every iteration. This method receives the current robot's view  #
     # and returns a tuple of (move_action, marker_action).                                    #
     #                                                                                         #
     # README - Get_Move                                                                       #
     ###########################################################################################
-    def get_move(self, view):
-
-        # Returns home if you have one resource
-        if (self.held_value() > 0):
-            self.goinghome = True
-        if(self.storage_remaining() == 0):
-            self.goinghome = True
-
-        # How to navigate back home
-        if(self.goinghome):
-            # You are t home
-            if(self.toHome == []):
-                self.goinghome = False
-                return (Actions.DROPOFF, Actions.DROP_NONE)
-            # Trace your steps back home
-            prevAction = self.toHome.pop()
-            revAction = self.OppositeDir(prevAction)
-            assert(isinstance(revAction, int))
-            return (revAction, Actions.DROP_NONE)
-
-        viewLen = len(view)
-        score = 0
-        # Run BFS to find closest resource
-
-        # Search for resources
-        # Updates self.targetPath, sefl.targetDest
-        self.ViewScan(view)
-        
-        # If you can't find any resources...go in a random direction!
-        actionToTake = None
-        if(self.targetPath == None):
-            actionToTake = self.FindRandomPath(view)
-
-        # Congrats! You have found a resource
-        elif(self.targetPath == []):
-            self.targetPath = None
-            return (Actions.MINE, Actions.DROP_NONE)
-        else:
-            # Use the first coordinate on the path as the destination , and action to move
-            actionToTake = self.UpdateTargetPath()
-        self.toHome.append(actionToTake)
-        #markerDrop = random.choice([Actions.DROP_RED,Actions.DROP_YELLOW,Actions.DROP_GREEN,Actions.DROP_BLUE,Actions.DROP_ORANGE])
-        markerDrop = Actions.DROP_NONE
-        assert(isinstance(actionToTake, int))
-        return (actionToTake, markerDrop)
 
     # Returns opposite direction
     def OppositeDir(self, prevAction):
@@ -207,3 +174,145 @@ class player_robot(Robot):
 
         return actionToTake
 
+    def adjacentWeights(self, view):
+      maxDist = (int)(len(view)/2)
+      length = len(view)
+      weights = [[0 for x in range(length)] for y in range(length)]
+      for x in range(maxDist+1):
+        # - Up
+        for y in range(length):
+          weights[x][y] = self.getWeightAvg(view, x, y, length, maxDist)
+
+        nx = length - x - 1
+        # - Down
+        for y in range(length):
+          weights[nx][y] = self.getWeightAvg(view, nx, y, length, maxDist)
+
+        ny = x
+        # | Left
+        for nx in range(length):
+          weights[nx][ny] = self.getWeightAvg(view, nx, ny, length, maxDist)
+
+        ny = length - x - 1
+        # | Right
+        for nx in range(length):
+          weights[nx][ny] = self.getWeightAvg(view, nx, ny, length, maxDist)
+      return [x[maxDist-1:maxDist+2] for x in weights[maxDist-1:maxDist+2]]
+
+    def getMarkerValue(self, view, x, y):
+      if(len(view[x][y][2]) == 0): 
+        return 0
+      colorAr = [x.GetColor() for x in view[x][y][2]]
+      minColor = min(colorAr)
+      return [1,4,9,16,25][minColor]
+
+    def getWeightAvg(self, view, x, y, length, maxDist):
+      if(view[x][y][0].GetType() == TileType.Mountain):
+        return 0
+      curDist = self.dist(x, y, length)
+      if(curDist == maxDist):
+        return self.getWeight(view, x, y)
+      curWeight = self.getWeight(view, x, y)
+      adjWeight = 0
+      adjNum = 0
+      for x in range(x-1, x+1):
+        for y in range(y-1, y+1):
+          if(self.dist(x, y, length) > curDist):
+            adjWeight += self.getWeight(view, x, y)
+            adjNum += 1
+      if(adjNum > 0):
+        adjWeight /= adjNum
+      return (curWeight + adjWeight) / 2
+
+    def dist(self, x, y, length):
+      return min(abs(x-length/2), abs(y-length/2))
+
+    def getWeight(self, view, x, y):
+      totalWeight = self.getMarkerValue(view, x, y)
+      if(totalWeight > 0): return totalWeight
+      totalWeight = 3
+      if(view[x][y][0].GetType() == TileType.Resource):
+        totalWeight += 10
+      return totalWeight
+
+    def determine_flag(self, weight):
+        cutoffs = [10, 20, 30, 40]
+        if (weight > cutoffs[3]):
+            return MarkerType.RED
+        elif (weight > cutoffs[2]):
+            return MarkerType.ORANGE
+        elif (weight > cutoffs[1]):
+            return MarkerType.YELLOW
+        elif (weight > cutoffs[0]):
+            return MarkerType.GREEN
+        else:
+            return MarkerType.BLUE
+
+    def marker_to_flag(self, marker):
+        if (marker == MarkerType.RED):
+            return Actions.DROP_RED
+        elif (marker == MarkerType.BLUE):
+            return Actions.DROP_BLUE
+        elif (marker == MarkerType.YELLOW):
+            return Actions.DROP_YELLOW
+        elif (marker == MarkerType.GREEN):
+            return Actions.DROP_GREEN
+        elif (marker == MarkerType.ORANGE):
+            return Actions.DROP_ORANGE
+        else:
+            return Actions.DROP_NONE
+
+    def get_move(self, view):
+        print("GET_MOVE")
+        if(self.storage_remaining() == 0):
+            self.goinghome = True
+        if(self.goinghome):
+            # You are t home
+            if(self.toHome == []):
+                self.goinghome = False
+                return (Actions.DROPOFF, Actions.DROP_NONE)
+            # Trace your steps back home
+            prevAction = self.toHome.pop()
+            revAction = self.OppositeDir(prevAction)
+            assert(isinstance(revAction, int))
+            print("HELLO" + revAction)
+            return (revAction, Actions.DROP_NONE)
+
+        adjacentWeights = self.adjacentWeights(view)
+        total = 0
+        weightList = []
+        for i in range (0, 3):
+            for j in range(0, 3):
+                if (i != 1 and j != 1):
+                    total = total + adjacentWeights[i][j]
+                    weightList.append(total)
+        rand = random.random()*total
+        if (rand < weightList[0]):
+            action = Actions.MOVE_NW
+        elif (rand < weightList[1]):
+            action = Actions.MOVE_N
+        elif (rand < weightList[2]):
+            action = Actions.MOVE_NE
+        elif (rand < weightList[3]):
+            action = Actions.MOVE_W
+        elif (rand < weightList[4]):
+            action = Actions.MOVE_E
+        elif (rand < weightList[5]):
+            action = Actions.MOVE_SW
+        elif (rand < weightList[6]):
+            action = Actions.MOVE_S
+        else:
+            action = Actions.MOVE_SE
+        print("TEST:"+str(action))
+        cur = int(len(view)/2)
+        currentTile = view[cur][cur][0]
+        dropFlag = self.marker_to_flag(self.determine_flag(adjacentWeights[1][1]))
+        print("FLAG:"+str(dropFlag))
+        tileType = currentTile.GetType()
+        if (tileType == TileType.Base and self.held_value() > 0):
+            return (Actions.DROPOFF, dropFlag)
+        elif (tileType == TileType.Resource):
+            return (Actions.MINE, dropFlag)
+        elif (tileType == TileType.Plains):
+            self.toHome.append(actionToTake)
+            return (action, dropFlag)
