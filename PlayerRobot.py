@@ -331,6 +331,11 @@ class player_robot(Robot):
     def get_move(self, view):
         if(self.storage_remaining() == 0):
             self.goinghome = True
+
+        adjacentWeights = self.adjacentWeights(view)
+        if(adjacentWeights[1][1] < 8 and (self.held_value() > 50 or self.storage_remaining() < 10)):
+            self.goinghome = True
+
         if(self.goinghome):
             # You are t home
             if(self.toHome == []):
@@ -341,8 +346,6 @@ class player_robot(Robot):
             revAction = self.OppositeDir(prevAction)
             assert(isinstance(revAction, int))  
             return (revAction, Actions.DROP_NONE)
-
-        adjacentWeights = self.adjacentWeights(view)
         total = 0
         weightList = []
         for i in range (0, 3):
