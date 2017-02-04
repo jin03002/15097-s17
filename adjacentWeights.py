@@ -73,5 +73,7 @@
       if(totalWeight > 0): return totalWeight
       totalWeight = 3
       if(view[x][y][0].GetType() == TileType.Resource):
-        totalWeight += 10
+        amountRemaining = view[x][y][0].Value() * view[x][y][0].AmountRemaining()
+        amountRemaining = (amountRemaining + 8) / 10
+        totalWeight += amountRemaining * amountRemaining
       return totalWeight
