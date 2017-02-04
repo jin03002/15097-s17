@@ -182,52 +182,96 @@ class player_robot(Robot):
       for x in range(maxDist+1):
         # - Up
         for y in range(length):
-          weights[x][y] = self.getWeightAvg(view, x, y, length, maxDist)
+          weights[x][y] = self.getWeightAvg(view, x, y, length, maxDist, weights)
 
         nx = length - x - 1
         # - Down
         for y in range(length):
-          weights[nx][y] = self.getWeightAvg(view, nx, y, length, maxDist)
+          weights[nx][y] = self.getWeightAvg(view, nx, y, length, maxDist, weights)
 
         ny = x
         # | Left
         for nx in range(length):
-          weights[nx][ny] = self.getWeightAvg(view, nx, ny, length, maxDist)
+          weights[nx][ny] = self.getWeightAvg(view, nx, ny, length, maxDist, weights)
 
         ny = length - x - 1
         # | Right
         for nx in range(length):
-          weights[nx][ny] = self.getWeightAvg(view, nx, ny, length, maxDist)
-      multiplier = 1.5
+          weights[nx][ny] = self.getWeightAvg(view, nx, ny, length, maxDist, weights)
+      multiplier = 45
+      multiplier2 = 25
+      weights = [x[maxDist-1:maxDist+2] for x in weights[maxDist-1:maxDist+2]]
       if(len(self.toHome) != 0):
           prevAction = self.toHome[-1]
           if(prevAction == Actions.MOVE_N):
               weights[0][1] *= multiplier
+              weights[2][1] /= multiplier
+              weights[0][0] *= multiplier2
+              weights[2][2] /= multiplier2
+              weights[0][2] *= multiplier2
+              weights[2][0] /= multiplier2
           elif(prevAction == Actions.MOVE_NE):
               weights[0][2] *= multiplier
+              weights[2][0] /= multiplier
+              weights[0][1] *= multiplier2
+              weights[2][1] /= multiplier2
+              weights[1][2] *= multiplier2
+              weights[1][0] /= multiplier2
           elif(prevAction == Actions.MOVE_E):
               weights[1][2] *= multiplier
+              weights[1][0] /= multiplier
+              weights[0][2] *= multiplier2
+              weights[2][0] /= multiplier2
+              weights[2][2] *= multiplier2
+              weights[0][0] /= multiplier2
           elif(prevAction == Actions.MOVE_SE):
               weights[2][2] *= multiplier 
+              weights[0][0] /= multiplier
+              weights[2][1] *= multiplier2
+              weights[0][1] /= multiplier2
+              weights[1][2] *= multiplier2
+              weights[1][0] /= multiplier2
           elif(prevAction == Actions.MOVE_S):
               weights[2][1] *= multiplier
+              weights[0][1] /= multiplier
+              weights[2][2] *= multiplier2
+              weights[0][0] /= multiplier2
+              weights[2][0] *= multiplier2
+              weights[0][2] /= multiplier2
           elif(prevAction == Actions.MOVE_SW):
               weights[2][0] *= multiplier
+              weights[0][2] /= multiplier
+              weights[1][0] *= multiplier2
+              weights[1][2] /= multiplier2
+              weights[2][1] *= multiplier2
+              weights[0][1] /= multiplier2
           elif(prevAction == Actions.MOVE_W):
               weights[1][0] *= multiplier
+              weights[1][2] /= multiplier
+              weights[2][0] *= multiplier2
+              weights[0][2] /= multiplier2
+              weights[0][0] *= multiplier2
+              weights[2][2] /= multiplier2
           elif(prevAction == Actions.MOVE_NW):
               weights[0][0] *= multiplier
-      return [x[maxDist-1:maxDist+2] for x in weights[maxDist-1:maxDist+2]]
+              weights[2][2] /= multiplier
+              weights[0][1] *= multiplier2
+              weights[2][1] /= multiplier2
+              weights[1][0] *= multiplier2
+              weights[1][2] /= multiplier2
+      return weights
 
     def getMarkerValue(self, view, x, y):
       if(len(view[x][y][2]) == 0): 
         return 0
       colorAr = [x.GetColor() for x in view[x][y][2]]
       minColor = min(colorAr)
-      return [0.1,0.8,1.3,2,3][minColor]
+      return [0.1,0.4,1.5,6,20][minColor]
 
-    def getWeightAvg(self, view, x, y, length, maxDist):
+    def getWeightAvg(self, view, x, y, length, maxDist, weights):
       if(view[x][y][0].GetType() == TileType.Mountain):
+        return 0
+      if(not view[x][y][0].CanMove()):
         return 0
       curDist = self.dist(x, y, length)
       if(curDist == maxDist):
@@ -238,7 +282,7 @@ class player_robot(Robot):
       for x in range(x-1, x+1):
         for y in range(y-1, y+1):
           if(self.dist(x, y, length) > curDist):
-            adjWeight += self.getWeight(view, x, y)
+            adjWeight += weights[x][y]
             adjNum += 1
       if(adjNum > 0):
         adjWeight /= adjNum
@@ -250,15 +294,15 @@ class player_robot(Robot):
     def getWeight(self, view, x, y):
       totalWeight = self.getMarkerValue(view, x, y)
       if(totalWeight > 0): return totalWeight
-      totalWeight = 3
+      totalWeight = 4
       if(view[x][y][0].GetType() == TileType.Resource):
         resource = view[x][y][0].Value()*view[x][y][0].AmountRemaining()
-        resource = (resource + 5) / 10
+        resource = (resource + 2) / 3
         totalWeight += resource * resource
       return totalWeight
 
     def determine_flag(self, weight):
-        cutoffs = [1, 2, 3, 4.5]
+        cutoffs = [0.5, 2, 8, 32]
         if (weight > cutoffs[3]):
             return MarkerType.ORANGE
         elif (weight > cutoffs[2]):
