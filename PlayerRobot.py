@@ -198,6 +198,25 @@ class player_robot(Robot):
         # | Right
         for nx in range(length):
           weights[nx][ny] = self.getWeightAvg(view, nx, ny, length, maxDist)
+      multiplier = 1.5
+      if(len(self.toHome) != 0):
+          prevAction = self.toHome[-1]
+          if(prevAction == Actions.MOVE_N):
+              weights[0][1] *= multiplier
+          elif(prevAction == Actions.MOVE_NE):
+              weights[0][2] *= multiplier
+          elif(prevAction == Actions.MOVE_E):
+              weights[1][2] *= multiplier
+          elif(prevAction == Actions.MOVE_SE):
+              weights[2][2] *= multiplier 
+          elif(prevAction == Actions.MOVE_S):
+              weights[2][1] *= multiplier
+          elif(prevAction == Actions.MOVE_SW):
+              weights[2][0] *= multiplier
+          elif(prevAction == Actions.MOVE_W):
+              weights[1][0] *= multiplier
+          elif(prevAction == Actions.MOVE_NW):
+              weights[0][0] *= multiplier
       return [x[maxDist-1:maxDist+2] for x in weights[maxDist-1:maxDist+2]]
 
     def getMarkerValue(self, view, x, y):
