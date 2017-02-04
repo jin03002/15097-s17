@@ -2,6 +2,7 @@ from robot import Robot
 from constants import Actions, TileType, MarkerType
 import random
 import time
+import sys
 
 ##########################################################################
 # One of your team members, Chris Hung, has made a starter bot for you.  #
@@ -204,7 +205,7 @@ class player_robot(Robot):
         return 0
       colorAr = [x.GetColor() for x in view[x][y][2]]
       minColor = min(colorAr)
-      return [1,4,9,16,25][minColor]
+      return [0.1,0.8,1.3,2,3][minColor]
 
     def getWeightAvg(self, view, x, y, length, maxDist):
       if(view[x][y][0].GetType() == TileType.Mountain):
@@ -232,21 +233,23 @@ class player_robot(Robot):
       if(totalWeight > 0): return totalWeight
       totalWeight = 3
       if(view[x][y][0].GetType() == TileType.Resource):
-        totalWeight += 10
+        resource = view[x][y][0].Value()*view[x][y][0].AmountRemaining()
+        resource = (resource + 5) / 10
+        totalWeight += resource * resource
       return totalWeight
 
     def determine_flag(self, weight):
-        cutoffs = [10, 20, 30, 40]
+        cutoffs = [1, 2, 3, 4.5]
         if (weight > cutoffs[3]):
-            return MarkerType.RED
-        elif (weight > cutoffs[2]):
             return MarkerType.ORANGE
-        elif (weight > cutoffs[1]):
-            return MarkerType.YELLOW
-        elif (weight > cutoffs[0]):
-            return MarkerType.GREEN
-        else:
+        elif (weight > cutoffs[2]):
             return MarkerType.BLUE
+        elif (weight > cutoffs[1]):
+            return MarkerType.GREEN
+        elif (weight > cutoffs[0]):
+            return MarkerType.YELLOW
+        else:
+            return MarkerType.RED
 
     def marker_to_flag(self, marker):
         if (marker == MarkerType.RED):
@@ -263,7 +266,6 @@ class player_robot(Robot):
             return Actions.DROP_NONE
 
     def get_move(self, view):
-        print("GET_MOVE")
         if(self.storage_remaining() == 0):
             self.goinghome = True
         if(self.goinghome):
@@ -274,8 +276,7 @@ class player_robot(Robot):
             # Trace your steps back home
             prevAction = self.toHome.pop()
             revAction = self.OppositeDir(prevAction)
-            assert(isinstance(revAction, int))
-            print("HELLO" + revAction)
+            assert(isinstance(revAction, int))  
             return (revAction, Actions.DROP_NONE)
 
         adjacentWeights = self.adjacentWeights(view)
@@ -283,7 +284,7 @@ class player_robot(Robot):
         weightList = []
         for i in range (0, 3):
             for j in range(0, 3):
-                if (i != 1 and j != 1):
+                if (i != 1 or j != 1):
                     total = total + adjacentWeights[i][j]
                     weightList.append(total)
         rand = random.random()*total
@@ -303,16 +304,14 @@ class player_robot(Robot):
             action = Actions.MOVE_S
         else:
             action = Actions.MOVE_SE
-        print("TEST:"+str(action))
         cur = int(len(view)/2)
         currentTile = view[cur][cur][0]
         dropFlag = self.marker_to_flag(self.determine_flag(adjacentWeights[1][1]))
-        print("FLAG:"+str(dropFlag))
         tileType = currentTile.GetType()
         if (tileType == TileType.Base and self.held_value() > 0):
             return (Actions.DROPOFF, dropFlag)
-        elif (tileType == TileType.Resource):
+        elif (tileType == TileType.Resource and currentTile.AmountRemaining() > 0):
             return (Actions.MINE, dropFlag)
-        elif (tileType == TileType.Plains):
-            self.toHome.append(actionToTake)
+        else:
+            self.toHome.append(action)
             return (action, dropFlag)
