@@ -199,7 +199,7 @@ class player_robot(Robot):
         for nx in range(length):
           weights[nx][ny] = self.getWeightAvg(view, nx, ny, length, maxDist, weights)
       multiplier = 45
-      multiplier2 = 25
+      multiplier2 = 5
       weights = [x[maxDist-1:maxDist+2] for x in weights[maxDist-1:maxDist+2]]
       if(len(self.toHome) != 0):
           prevAction = self.toHome[-1]
@@ -266,7 +266,7 @@ class player_robot(Robot):
         return 0
       colorAr = [x.GetColor() for x in view[x][y][2]]
       minColor = min(colorAr)
-      return [0.1,0.4,1.5,6,20][minColor]
+      return [1,3,9,27,81][minColor]
 
     def getWeightAvg(self, view, x, y, length, maxDist, weights):
       if(view[x][y][0].GetType() == TileType.Mountain):
@@ -279,10 +279,10 @@ class player_robot(Robot):
       curWeight = self.getWeight(view, x, y)
       adjWeight = 0
       adjNum = 0
-      for x in range(x-1, x+1):
-        for y in range(y-1, y+1):
-          if(self.dist(x, y, length) > curDist):
-            adjWeight += weights[x][y]
+      for xn in range(x-1, x+2):
+        for yn in range(y-1, y+2):
+          if(self.dist(xn, yn, length) > curDist and yn < length and xn < length and yn >= 0 and xn >= 0):
+            adjWeight += weights[xn][yn]
             adjNum += 1
       if(adjNum > 0):
         adjWeight /= adjNum
@@ -294,15 +294,15 @@ class player_robot(Robot):
     def getWeight(self, view, x, y):
       totalWeight = self.getMarkerValue(view, x, y)
       if(totalWeight > 0): return totalWeight
-      totalWeight = 4
+      totalWeight = 60
       if(view[x][y][0].GetType() == TileType.Resource):
         resource = view[x][y][0].Value()*view[x][y][0].AmountRemaining()
-        resource = (resource + 2) / 3
+        resource = (resource + 2) *5
         totalWeight += resource * resource
       return totalWeight
 
     def determine_flag(self, weight):
-        cutoffs = [0.5, 2, 8, 32]
+        cutoffs = [8, 32, 128, 512]
         if (weight > cutoffs[3]):
             return MarkerType.ORANGE
         elif (weight > cutoffs[2]):
@@ -350,7 +350,7 @@ class player_robot(Robot):
                 if (i != 1 or j != 1):
                     total = total + adjacentWeights[i][j]
                     weightList.append(total)
-        rand = random.random()*total
+        rand = random.uniform(0, total)
         if (rand < weightList[0]):
             action = Actions.MOVE_NW
         elif (rand < weightList[1]):
